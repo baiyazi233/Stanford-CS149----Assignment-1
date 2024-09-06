@@ -37,7 +37,7 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-
+// 该函数计算给定复数点c = c_re + c_im是否属于曼德布罗特集合，count为最大迭代次数
 static inline int mandel(float c_re, float c_im, int count)
 {
     float z_re = c_re, z_im = c_im;
@@ -52,7 +52,7 @@ static inline int mandel(float c_re, float c_im, int count)
         z_re = c_re + new_re;
         z_im = c_im + new_im;
     }
-
+    // 超过count说明不属于该集合
     return i;
 }
 
@@ -67,6 +67,9 @@ static inline int mandel(float c_re, float c_im, int count)
 //   into the image viewport.
 // * width, height describe the size of the output image
 // * startRow, totalRows describe how much of the image to compute
+// 计算图像中给定区域的 Mandelbrot 集合，最终结果是一个包含每个像素点所需迭代次数的数组。
+// startRow 和 totalRows 指定需要计算的图像行范围，用于处理部分图像（可以用于并行化）。
+// maxIterations 是曼德布罗特集合计算中每个点的最大迭代次数，超过该次数即认定该点属于 Mandelbrot 集合。
 void mandelbrotSerial(
     float x0, float y0, float x1, float y1,
     int width, int height,

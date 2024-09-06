@@ -92,22 +92,33 @@ You will not need to make use of any other std::thread API calls in this assignm
   thread 0, and the bottom half of the image in thread 1. This type
     of problem decomposition is referred to as _spatial decomposition_ since
   different spatial regions of the image are computed by different processors.
+  答案：**prog1_mandelbrot_threads/mandelbrotThread.cpp**
 2.  Extend your code to use 2, 3, 4, 5, 6, 7, and 8 threads, partitioning the image
   generation work accordingly (threads should get blocks of the image). Note that the processor only has four cores but each
   core supports two hyper-threads, so it can execute a total of eight threads interleaved on its execution contents.
   In your write-up, produce a graph of __speedup compared to the reference sequential implementation__ as a function of the number of threads used __FOR VIEW 1__. Is speedup linear in the number of threads used? In your writeup hypothesize why this is (or is not) the case? (you may also wish to produce a graph for VIEW 2 to help you come up with a good answer. Hint: take a careful look at the three-thread datapoint.)
+  答案：
+  ![alt text](./image/1/image.png)
+  因为各个线程的负载不均衡导致加速比不能成倍增加
 3.  To confirm (or disprove) your hypothesis, measure the amount of time
   each thread requires to complete its work by inserting timing code at
   the beginning and end of `workerThreadStart()`. How do your measurements
   explain the speedup graph you previously created?
+  答案：
+  View1
+  ![alt text](./image/1/image1.png)
+  View2
+  ![alt text](./image/1/image2.png)
 4.  Modify the mapping of work to threads to achieve to improve speedup to
   at __about 7-8x on both views__ of the Mandelbrot set (if you're above 7x that's fine, don't sweat it). You may not use any
   synchronization between threads in your solution. We are expecting you to come up with a single work decomposition policy that will work well for all thread counts---hard coding a solution specific to each configuration is not allowed! (Hint: There is a very simple static
   assignment that will achieve this goal, and no communication/synchronization
   among threads is necessary.). In your writeup, describe your approach to parallelization
-  and report the final 8-thread speedup obtained. 
+  and report the final 8-thread speedup obtained.
+  答案：改用interleaved的分配，即通过“交错”的方式，将图像的不同行分配给不同的线程。具体来说，线程不再负责连续的行，而是每个线程依次处理图像的第 n 行（其中 n = 线程ID），然后跳到下一个行组。这种策略可以大大改善工作负载的均衡性，因为每个线程都将处理图像的各个部分，而不是集中在某个区域。
+  view1加速比为9.47，view2的加速比为9.25
 5. Now run your improved code with 16 threads. Is performance noticably greater than when running with eight threads? Why or why not? 
-  
+  答案：因为CPU只有4个内核，每个内核有2个线程，这提供了8个线程的多线程特性。
 ## Program 2: Vectorizing Code Using SIMD Intrinsics (20 points) ##
 
 Take a look at the function `clampedExpSerial` in `prog2_vecintrin/main.cpp` of the

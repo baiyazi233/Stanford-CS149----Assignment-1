@@ -4,6 +4,7 @@
 
 #include "CycleTimer.h"
 
+// 串行计算曼德布罗特集合的函数
 extern void mandelbrotSerial(
     float x0, float y0, float x1, float y1,
     int width, int height,
@@ -11,6 +12,7 @@ extern void mandelbrotSerial(
     int maxIterations,
     int output[]);
 
+// 多线程计算曼德布罗特集合的函数
 extern void mandelbrotThread(
     int numThreads,
     float x0, float y0, float x1, float y1,
@@ -18,12 +20,14 @@ extern void mandelbrotThread(
     int maxIterations,
     int output[]);
 
+// 将生成的曼德布罗特集合数据写入PPM格式的图像文件
 extern void writePPMImage(
     int* data,
     int width, int height,
     const char *filename,
     int maxIterations);
 
+// 用于对坐标范围进行缩放和平移，用于实现对曼德布罗特集合视图的不同调整
 void
 scaleAndShift(float& x0, float& x1, float& y0, float& y1,
               float scale,
@@ -71,7 +75,7 @@ int main(int argc, char** argv) {
     const unsigned int width = 1600;
     const unsigned int height = 1200;
     const int maxIterations = 256;
-    int numThreads = 2;
+    int numThreads = 16;
 
     float x0 = -2;
     float x1 = 1;
@@ -155,6 +159,7 @@ int main(int argc, char** argv) {
     printf("[mandelbrot thread]:\t\t[%.3f] ms\n", minThread * 1000);
     writePPMImage(output_thread, width, height, "mandelbrot-thread.ppm", maxIterations);
 
+    // 比较串行和多线程计算的结果是否一致。如果不一致，程序会输出错误信息
     if (! verifyResult (output_serial, output_thread, width, height)) {
         printf ("Error : Output from threads does not match serial output\n");
 
