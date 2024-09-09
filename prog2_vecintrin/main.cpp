@@ -63,8 +63,8 @@ int main(int argc, char * argv[]) {
   clampedExpSerial(values, exponents, gold, N);
   clampedExpVector(values, exponents, output, N);
 
-  //absSerial(values, gold, N);
-  //absVector(values, output, N);
+  // absSerial(values, gold, N);
+  // absVector(values, output, N);
 
   printf("\e[1;31mCLAMPED EXPONENT\e[0m (required) \n");
   bool clampedCorrect = verifyResult(values, exponents, output, gold, N);
@@ -198,6 +198,7 @@ void absVector(float* values, float* output, int N) {
     _cs149_vload_float(x, values+i, maskAll);               // x = values[i];
 
     // Set mask according to predicate
+    // 是否为负数
     _cs149_vlt_float(maskIsNegative, x, zero, maskAll);     // if (x < 0) {
 
     // Execute instruction using mask ("if" clause)
@@ -241,15 +242,44 @@ void clampedExpSerial(float* values, int* exponents, float* output, int N) {
 }
 
 void clampedExpVector(float* values, int* exponents, float* output, int N) {
+    __cs149_vec_float x, result;
+    __cs149_vec_int y, count;
+    __cs149_vec_float nine = _cs149_vset_float(9.999999f);
+    __cs149_vec_int zero = _cs149_vset_int(0);
+    __cs149_vec_int one = _cs149_vset_int(1);
+    __cs149_mask maskAll, maskIsZero, maskIsNotZero, maskIsBigger, maskCountPositive;
 
-  //
-  // CS149 STUDENTS TODO: Implement your vectorized version of
-  // clampedExpSerial() here.
-  //
-  // Your solution should work for any value of
-  // N and VECTOR_WIDTH, not just when VECTOR_WIDTH divides N
-  //
-  
+    for (int i = 0; i < N; i += VECTOR_WIDTH) {
+        maskAll = _cs149_init_ones();
+
+        // 加载数据
+        _cs149_vload_float(x, values + i, maskAll);
+        _cs149_vload_int(y, exponents + i, maskAll);
+
+        // 判断指数是否为 0
+        _cs149_veq_int(maskIsZero, y, zero, maskAll);
+        _cs149_vset_float(result, 1.0f, maskIsZero);  // 如果 y == 0, result = 1.0
+
+        // 处理非 0 的指数
+        maskIsNotZero = _cs149_mask_not(maskIsZero);
+        _cs149_vmove_float(result, x, maskIsNotZero);  // result = x (for non-zero exponents)
+        _cs149_vsub_int(count, y, one, maskIsNotZero);  // count = y - 1
+
+        // 不断乘法直到 count 为 0
+        while (1) {
+            _cs149_vgt_int(maskCountPositive, count, zero, maskIsNotZero);  // count > 0
+            if (!_cs149_cntbits(maskCountPositive)) break;  // 如果没有 count > 0, 退出循环
+            _cs149_vmult_float(result, result, x, maskCountPositive);  // result *= x (where count > 0)
+            _cs149_vsub_int(count, count, one, maskCountPositive);  // count--
+        }
+
+        // 将 result 限制到 9.999999 以内
+        _cs149_vgt_float(maskIsBigger, result, nine, maskAll);
+        _cs149_vset_float(result, 9.999999f, maskIsBigger);  // result = 9.999999 where result > 9.999999
+
+        // 将结果存储回 output
+        _cs149_vstore_float(output + i, result, maskAll);
+    }
 }
 
 // returns the sum of all elements in values
@@ -266,15 +296,36 @@ float arraySumSerial(float* values, int N) {
 // You can assume N is a multiple of VECTOR_WIDTH
 // You can assume VECTOR_WIDTH is a power of 2
 float arraySumVector(float* values, int N) {
-  
-  //
-  // CS149 STUDENTS TODO: Implement your vectorized version of arraySumSerial here
-  //
-  
-  for (int i=0; i<N; i+=VECTOR_WIDTH) {
+    __cs149_vec_float sumVec, tempVec;
+    __cs149_mask maskAll = _cs149_init_ones();  // 全1的掩码，用于执行所有向量通道的操作
+    float finalSum = 0.0f;
 
-  }
+    // 初始化 sumVec 为0，用来累加向量中的所有元素
+    sumVec = _cs149_vset_float(0.0f);
 
-  return 0.0;
+    // 循环遍历输入数组，每次处理 VECTOR_WIDTH 大小的块
+    for (int i = 0; i < N; i += VECTOR_WIDTH) {
+        // 将当前块的 VECTOR_WIDTH 个浮点数加载到 tempVec 向量中
+        _cs149_vload_float(tempVec, values + i, maskAll);
+        
+        // 将当前块的元素加到累积的 sumVec 中
+        _cs149_vadd_float(sumVec, sumVec, tempVec, maskAll);
+    }
+
+    // 现在对 sumVec 进行归约操作，逐步将向量元素加在一起
+    // 使用连续的 hadd 和 interleave 操作来进行归约
+    for (int width = VECTOR_WIDTH; width > 1; width /= 2) {
+        _cs149_hadd_float(sumVec, sumVec);        // 将相邻元素相加
+        _cs149_interleave_float(sumVec, sumVec);  // 将偶数索引和奇数索引的元素交错
+    }
+
+    // 将最终的向量结果存储回标量数组
+    float result[VECTOR_WIDTH];
+    _cs149_vstore_float(result, sumVec, maskAll);
+    
+    // result 数组的第一个元素现在包含了所有元素的和
+    finalSum = result[0];
+
+    return finalSum;
 }
 

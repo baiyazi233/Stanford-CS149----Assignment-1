@@ -92,11 +92,13 @@ You will not need to make use of any other std::thread API calls in this assignm
   thread 0, and the bottom half of the image in thread 1. This type
     of problem decomposition is referred to as _spatial decomposition_ since
   different spatial regions of the image are computed by different processors.
+  
   答案：**prog1_mandelbrot_threads/mandelbrotThread.cpp**
 2.  Extend your code to use 2, 3, 4, 5, 6, 7, and 8 threads, partitioning the image
   generation work accordingly (threads should get blocks of the image). Note that the processor only has four cores but each
   core supports two hyper-threads, so it can execute a total of eight threads interleaved on its execution contents.
   In your write-up, produce a graph of __speedup compared to the reference sequential implementation__ as a function of the number of threads used __FOR VIEW 1__. Is speedup linear in the number of threads used? In your writeup hypothesize why this is (or is not) the case? (you may also wish to produce a graph for VIEW 2 to help you come up with a good answer. Hint: take a careful look at the three-thread datapoint.)
+  
   答案：
   ![alt text](./image/1/image.png)
   因为各个线程的负载不均衡导致加速比不能成倍增加
@@ -104,6 +106,7 @@ You will not need to make use of any other std::thread API calls in this assignm
   each thread requires to complete its work by inserting timing code at
   the beginning and end of `workerThreadStart()`. How do your measurements
   explain the speedup graph you previously created?
+  
   答案：
   View1
   ![alt text](./image/1/image1.png)
@@ -115,9 +118,11 @@ You will not need to make use of any other std::thread API calls in this assignm
   assignment that will achieve this goal, and no communication/synchronization
   among threads is necessary.). In your writeup, describe your approach to parallelization
   and report the final 8-thread speedup obtained.
+  
   答案：改用interleaved的分配，即通过“交错”的方式，将图像的不同行分配给不同的线程。具体来说，线程不再负责连续的行，而是每个线程依次处理图像的第 n 行（其中 n = 线程ID），然后跳到下一个行组。这种策略可以大大改善工作负载的均衡性，因为每个线程都将处理图像的各个部分，而不是集中在某个区域。
   view1加速比为9.47，view2的加速比为9.25
 5. Now run your improved code with 16 threads. Is performance noticably greater than when running with eight threads? Why or why not? 
+  
   答案：因为CPU只有4个内核，每个内核有2个线程，这提供了8个线程的多线程特性。
 ## Program 2: Vectorizing Code Using SIMD Intrinsics (20 points) ##
 
@@ -150,10 +155,29 @@ shows the percentage of vector lanes that are enabled.
 
 1.  Implement a vectorized version of `clampedExpSerial` in `clampedExpVector` . Your implementation 
 should work with any combination of input array size (`N`) and vector width (`VECTOR_WIDTH`). 
+
+答案：**prog2_vecintrin/main.cpp**
 2.  Run `./myexp -s 10000` and sweep the vector width from 2, 4, 8, to 16. Record the resulting vector 
 utilization. You can do this by changing the `#define VECTOR_WIDTH` value in `CS149intrin.h`. 
 Does the vector utilization increase, decrease or stay the same as `VECTOR_WIDTH` changes? Why?
+
+答案：
+![alt text](image/2/image3.png)
+向量利用率随着向量宽度增加而变低的主要原因在于：
+
+1.**数据不对齐**：当数据总量不是向量宽度的倍数时，最后一批数据无法填满所有通道。
+
+2.**小数据集的过度开销**：向量宽度过大时，数据集较小时，许多向量通道被浪费。
+
+3.**内存带宽限制**：向量宽度增大可能超过系统内存的带宽能力，导致向量通道无法有效利用。
+
+4.**条件分支的掩码操作**：在条件操作中，向量通道越多，某些通道越可能被掩盖而不执行计算。
+
+为了提高向量利用率，应尽量确保数据量是 VECTOR_WIDTH 的倍数，并在程序设计中尽量减少条件分支和内存访问瓶颈。
+
 3.  _Extra credit: (1 point)_ Implement a vectorized version of `arraySumSerial` in `arraySumVector`. Your implementation may assume that `VECTOR_WIDTH` is a factor of the input array size `N`. Whereas the serial implementation runs in `O(N)` time, your implementation should aim for runtime of `(N / VECTOR_WIDTH + VECTOR_WIDTH)` or even `(N / VECTOR_WIDTH + log2(VECTOR_WIDTH))`  You may find the `hadd` and `interleave` operations useful.
+
+答案：**prog2_vecintrin/main.cpp**
 
 ## Program 3: Parallel Fractal Generation Using ISPC (20 points) ##
 
