@@ -101,7 +101,9 @@ You will not need to make use of any other std::thread API calls in this assignm
   
   答案：
   ![alt text](./image/1/image.png)
+
   因为各个线程的负载不均衡导致加速比不能成倍增加
+
 3.  To confirm (or disprove) your hypothesis, measure the amount of time
   each thread requires to complete its work by inserting timing code at
   the beginning and end of `workerThreadStart()`. How do your measurements
@@ -112,6 +114,7 @@ You will not need to make use of any other std::thread API calls in this assignm
   ![alt text](./image/1/image1.png)
   View2
   ![alt text](./image/1/image2.png)
+
 4.  Modify the mapping of work to threads to achieve to improve speedup to
   at __about 7-8x on both views__ of the Mandelbrot set (if you're above 7x that's fine, don't sweat it). You may not use any
   synchronization between threads in your solution. We are expecting you to come up with a single work decomposition policy that will work well for all thread counts---hard coding a solution specific to each configuration is not allowed! (Hint: There is a very simple static
@@ -120,7 +123,9 @@ You will not need to make use of any other std::thread API calls in this assignm
   and report the final 8-thread speedup obtained.
   
   答案：改用interleaved的分配，即通过“交错”的方式，将图像的不同行分配给不同的线程。具体来说，线程不再负责连续的行，而是每个线程依次处理图像的第 n 行（其中 n = 线程ID），然后跳到下一个行组。这种策略可以大大改善工作负载的均衡性，因为每个线程都将处理图像的各个部分，而不是集中在某个区域。
+
   view1加速比为9.47，view2的加速比为9.25
+  
 5. Now run your improved code with 16 threads. Is performance noticably greater than when running with eight threads? Why or why not? 
   
   答案：因为CPU只有4个内核，每个内核有2个线程，这提供了8个线程的多线程特性。
@@ -162,7 +167,9 @@ utilization. You can do this by changing the `#define VECTOR_WIDTH` value in `CS
 Does the vector utilization increase, decrease or stay the same as `VECTOR_WIDTH` changes? Why?
 
 答案：
+
 ![alt text](image/2/image3.png)
+
 向量利用率随着向量宽度增加而变低的主要原因在于：
 
 1.**数据不对齐**：当数据总量不是向量宽度的倍数时，最后一批数据无法填满所有通道。
@@ -309,7 +316,23 @@ the foreach loop to yield a more straightforward implementation.
   Program 1, where speedup was achieved by running threads on multiple
   cores.
 
-If you look into detailed technical material about the CPUs in the myth machines, you will find there are a complicated set of rules about how many scalar and vector instructions can be run per clock.  For the purposes of this assignment, you can assume that there are about as many 8-wide vector execution units as there are scalar execution units for floating point math.   
+If you look into detailed technical material about the CPUs in the myth machines, you will find there are a complicated set of rules about how many scalar and vector instructions can be run per clock.  For the purposes of this assignment, you can assume that there are about as many 8-wide vector execution units as there are scalar execution units for floating point math.  
+
+答案：
+
+8路AVX2向量指令表示可以同时处理8个数据项。因此，理论上的最大加速比是8倍，因为在每个时钟周期内可以处理8个浮点数。我的cpu型号是R5 5600U有6个核论最大加速比可以达到48倍（8路AVX2 * 6核心）。
+
+**负载不均衡：**
+曼德博集合的不同区域具有不同的复杂度（不同的迭代次数）。在图像的某些部分，计算非常复杂，需要进行多次迭代，而在其他部分，计算非常简单。这种不均衡的负载会导致SIMD指令中的一些“lane”在执行过程中空闲，从而降低并行效率。
+
+**分支跳变（Branching）问题：**
+曼德博集合中的某些区域可能会导致早期退出迭代，这会导致SIMD指令中的部分数据流提前终止。而由于SIMD指令需要同时处理所有“lane”中的数据，这会浪费部分计算能力。
+
+**内存带宽：**
+如果并行任务太多，CPU的缓存和内存带宽可能会成为瓶颈，导致内存访问延迟，影响整体性能。
+
+**线程同步和任务调度开销：**
+当使用任务并行（多线程）时，线程的创建、同步和调度会带来额外的开销，可能会部分抵消并行化带来的加速效果。
 
 ### Program 3, Part 2: ISPC Tasks (10 of 20 points) ###
 
@@ -332,6 +355,9 @@ different CPU cores).
 1.  Run `mandelbrot_ispc` with the parameter `--tasks`. What speedup do you
   observe on view 1? What is the speedup over the version of `mandelbrot_ispc` that
   does not partition that computation into tasks?
+
+答案：(5.78x speedup from ISPC)，(11.38x speedup from task ISPC)
+
 2.  There is a simple way to improve the performance of
   `mandelbrot_ispc --tasks` by changing the number of tasks the code
   creates. By only changing code in the function
@@ -339,7 +365,10 @@ different CPU cores).
   performance that exceeds the sequential version of the code by over 32 times!
   How did you determine how many tasks to create? Why does the
   number you chose work best?
-3.  _Extra Credit: (2 points)_ What are differences between the thread
+
+答案：使用最大超线程数12
+
+1.  _Extra Credit: (2 points)_ What are differences between the thread
   abstraction (used in Program 1) and the ISPC task abstraction? There
   are some obvious differences in semantics between the (create/join
   and (launch/sync) mechanisms, but the implications of these differences
@@ -348,11 +377,39 @@ different CPU cores).
   10,000 threads? (For this thought experiment, please discuss in the general case
   - i.e. don't tie your discussion to this given mandelbrot program.)
 
+答案：
+
+线程抽象由操作系统管理，开销大且适合粗粒度的并行任务，而ISPC任务抽象轻量级，由ISPC运行时管理，适合细粒度的并行任务。
+
+启动10,000个ISPC任务比启动10,000个线程的开销小得多，ISPC任务可以高效地利用多核和SIMD指令。
+
+ISPC使用两种并行机制是为了充分利用硬件资源，foreach用于SIMD并行，而launch用于多核并行。两者相辅相成，提供了细粒度的并行控制和多核加速的能力。
+
 _The smart-thinking student's question_: Hey wait! Why are there two different
 mechanisms (`foreach` and `launch`) for expressing independent, parallelizable
 work to the ISPC system? Couldn't the system just partition the many iterations
 of `foreach` across all cores and also emit the appropriate SIMD code for the
 cores?
+
+为什么ISPC有两种机制（foreach和launch）来表达并行化？
+
+**foreach机制：**
+
+foreach用于表示数据并行的循环，其主要目的是使用SIMD指令并行处理数据。通过foreach，ISPC能够自动将循环中的每次迭代映射到不同的SIMD “lane”上，从而一次处理多个数据项。它的优势在于利用SIMD并行能力，而不依赖于多核并行。
+适用于数据独立、SIMD友好的场景，特别是计算密集型任务。
+
+**launch机制：**
+
+launch用于表示任务并行。它启动多个任务，并通过多核并行执行这些任务。每个任务本质上就是一个并行的计算单元，运行在不同的CPU核心上。
+launch主要是为了利用多核CPU的并行性，每个任务可以在不同的核心上执行，并且每个任务内部还可以通过SIMD并行执行。
+
+为什么不通过foreach来划分并行任务？
+
+**控制粒度：**
+foreach是针对SIMD级别的并行处理，它并不直接控制任务的划分或调度。如果仅使用foreach，任务并不会分布在多个核心上。ISPC需要在launch任务的基础上结合SIMD并行来充分利用多核多线程和SIMD并行。
+
+**多核与SIMD的结合：**
+launch机制可以将任务分配到多个核心上，并且每个核心内部的任务依然可以通过foreach利用SIMD指令。这两种机制结合起来，可以最大化利用CPU的并行计算资源。
 
 _Answer_: Great question! And there are a lot of possible answers. Come to
 office hours.
