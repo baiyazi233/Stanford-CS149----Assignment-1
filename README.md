@@ -435,12 +435,21 @@ Note: This problem is a review to double-check your understanding, as it covers 
   single CPU core (no tasks) and when using all cores (with tasks). What 
   is the speedup due to SIMD parallelization? What is the speedup due to 
   multi-core parallelization?
+
+答案：(4.84x speedup from ISPC)，(49.38x speedup from task ISPC)，SIMD并行化带来的加速比是4.84，多核并行化带来的加速比是10.20
+
 2.  Modify the contents of the array values to improve the relative speedup 
   of the ISPC implementations. Construct a specifc input that __maximizes speedup over the sequential version of the code__ and report the resulting speedup achieved (for both the with- and without-tasks ISPC implementations). Does your modification improve SIMD speedup?
   Does it improve multi-core speedup (i.e., the benefit of moving from ISPC without-tasks to ISPC with tasks)? Please explain why.
-3.  Construct a specific input for `sqrt` that __minimizes speedup for ISPC (without-tasks) over the sequential version of the code__. Describe this input, describe why you chose it, and report the resulting relative performance of the ISPC implementations. What is the reason for the loss in efficiency? 
+
+答案：所有元素初始化为2.999，(6.81x speedup from ISPC)，(59.88x speedup from task ISPC)。通过设置均匀的输入数据，SIMD 加速比提高，因为每个 SIMD 寄存器中的元素执行相同的操作次数，处理器可以更高效地并行执行。均匀的输入数据同样提高了多核加速比，因为负载均衡更好，减少了多核执行时的同步和等待开销。
+
+1.  Construct a specific input for `sqrt` that __minimizes speedup for ISPC (without-tasks) over the sequential version of the code__. Describe this input, describe why you chose it, and report the resulting relative performance of the ISPC implementations. What is the reason for the loss in efficiency? 
     __(keep in mind we are using the `--target=avx2` option for ISPC, which generates 8-wide SIMD instructions)__. 
-4.  _Extra Credit: (up to 2 points)_ Write your own version of the `sqrt` 
+
+答案：所有元素都等于1，除了那些索引是8的倍数等于2.999的元素(0.93x speedup from ISPC)，(8.28x speedup from task ISPC),上述输入数据会导致 ISPC 在 SIMD 指令执行时每个元素所需的迭代次数不同。因为 SIMD 指令需要对一组数据执行相同的操作，如果其中一个元素需要更多的迭代，其他元素就必须等待，从而导致 SIMD 的并行效率下降。由于 ISPC 使用 8 宽 SIMD 指令（AVX2），需要同时处理 8 个数据，如果这些数据的计算量不均匀，实际执行速度就会被最慢的那一个元素所拖累。这种情况下，SIMD 指令并不能充分利用其并行能力
+
+1.  _Extra Credit: (up to 2 points)_ Write your own version of the `sqrt` 
  function manually using AVX2 intrinsics. To get credit your 
     implementation should be nearly as fast (or faster) than the binary 
     produced using ISPC. You may find the [Intel Intrinsics Guide](https://software.intel.com/sites/landingpage/IntrinsicsGuide/) 
