@@ -470,10 +470,26 @@ elements used. `saxpy` is a *trivially parallelizable computation* and features 
   ISPC (without tasks) and ISPC (with tasks) implementations of saxpy. What 
   speedup from using ISPC with tasks do you observe? Explain the performance of this program.
   Do you think it can be substantially improved? (For example, could you rewrite the code to achieve near linear speedup? Yes or No? Please justify your answer.)
+
+答案：(1.10x speedup from use of tasks)该程序需要多次内存访问，因此受到内存带宽的限制。所以很难达到线性
+
 2. __Extra Credit:__ (1 point) Note that the total memory bandwidth consumed computation in `main.cpp` is `TOTAL_BYTES = 4 * N * sizeof(float);`.  Even though `saxpy` loads one element from X, one element from Y, and writes one element to `result` the multiplier by 4 is correct.  Why is this the case? (Hint, think about how CPU caches work.)
+
+答案：
+
+1 次读取 X[i]：从内存加载 X 的数据到缓存中。
+
+1 次读取 Y[i]：从内存加载 Y 的数据到缓存中。
+
+1 次读取 result[i]：虽然 result[i] 是写操作，但 CPU 可能会先将缓存行加载到缓存，然后再进行修改。
+
+1 次写回 result[i]：修改后的缓存行最终需要写回内存。
+
 3. __Extra Credit:__ (points handled on a case-by-case basis) Improve the performance of `saxpy`.
   We're looking for a significant speedup here, not just a few percentage 
   points. If successful, describe how you did it and what a best-possible implementation on these systems might achieve. Also, if successful, come tell the staff, we'll be interested. ;-)
+
+答案：用GPU，GPU拥有成百上千个小的计算单元（CUDA核心或流处理器），能够在同一时间并行处理大量数据。这非常适合像SAXPY这样可以被分解为大量独立操作的任务。GPU的显存带宽通常比CPU的内存带宽要高得多，这使得GPU在处理需要大量数据传输的任务时具有明显的优势。
 
 Notes: Some students have gotten hung up on this question (thinking too hard) in the past. We expect a simple answer, but the results from running this problem might trigger more questions in your head.  Feel encouraged to come talk to the staff.
 
